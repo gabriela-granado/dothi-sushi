@@ -32,8 +32,6 @@ export type InsertUser = typeof users.$inferInsert;
 export const orders = mysqlTable("orders", {
   id: int("id").autoincrement().primaryKey(),
   customerName: varchar("customerName", { length: 255 }).notNull(),
-  customerPhone: varchar("customerPhone", { length: 20 }).notNull(),
-  customerAddress: text("customerAddress").notNull(),
   dish: varchar("dish", { length: 255 }).notNull(),
   paymentMethod: mysqlEnum("paymentMethod", ["cash", "credit_card", "debit_card", "pix"]).notNull(),
   status: mysqlEnum("status", ["pending", "preparing", "ready", "delivered"]).default("pending").notNull(),

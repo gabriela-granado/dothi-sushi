@@ -31,16 +31,16 @@ const statusColors: Record<OrderStatus, string> = {
 };
 
 const statusLabels: Record<OrderStatus, string> = {
-  pending: "Pendente",
-  preparing: "Preparando",
-  ready: "Pronto",
-  delivered: "Entregue",
+  pending: "Pending",
+  preparing: "Preparing",
+  ready: "Ready",
+  delivered: "Delivered",
 };
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
-  cash: "Dinheiro",
-  credit_card: "Cartão de Crédito",
-  debit_card: "Cartão de Débito",
+  cash: "Cash",
+  credit_card: "Credit Card",
+  debit_card: "Debit Card",
   pix: "Pix",
 };
 
@@ -56,36 +56,34 @@ export default function Orders() {
 
   const [formData, setFormData] = useState({
     customerName: "",
-    customerPhone: "",
-    customerAddress: "",
     dish: "",
     paymentMethod: "cash" as PaymentMethod,
   });
 
   const handleCreateOrder = async () => {
-    if (!formData.customerName.trim() || !formData.customerPhone.trim() || !formData.customerAddress.trim() || !formData.dish.trim()) {
-      toast.error("Por favor, preencha todos os campos");
+    if (!formData.customerName.trim() || !formData.dish.trim()) {
+      toast.error("Please fill in all fields");
       return;
     }
 
     try {
       await createOrderMutation.mutateAsync(formData);
-      toast.success("Pedido criado com sucesso");
-      setFormData({ customerName: "", customerPhone: "", customerAddress: "", dish: "", paymentMethod: "cash" });
+      toast.success("Order created successfully");
+      setFormData({ customerName: "", dish: "", paymentMethod: "cash" });
       setIsDialogOpen(false);
       refetch();
     } catch (error) {
-      toast.error("Falha ao criar pedido");
+      toast.error("Failed to create order");
     }
   };
 
   const handleStatusChange = async (orderId: number, newStatus: OrderStatus) => {
     try {
       await updateStatusMutation.mutateAsync({ orderId, status: newStatus });
-      toast.success("Status do pedido atualizado");
+      toast.success("Order status updated");
       refetch();
     } catch (error) {
-      toast.error("Falha ao atualizar status do pedido");
+      toast.error("Failed to update order status");
     }
   };
 
@@ -94,12 +92,12 @@ export default function Orders() {
 
     try {
       await deleteOrderMutation.mutateAsync({ orderId: selectedOrderId });
-      toast.success("Pedido deletado com sucesso");
+      toast.success("Order deleted successfully");
       setDeleteConfirmOpen(false);
       setSelectedOrderId(null);
       refetch();
     } catch (error) {
-      toast.error("Falha ao deletar pedido");
+      toast.error("Failed to delete order");
     }
   };
 
@@ -112,73 +110,55 @@ export default function Orders() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
-          <p className="text-muted-foreground mt-1">Gerenciar e rastrear pedidos de clientes</p>
+          <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
+          <p className="text-muted-foreground mt-1">Manage and track customer orders</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Novo Pedido
+              New Order
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Criar Novo Pedido</DialogTitle>
+              <DialogTitle>Create New Order</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="customer-name">Nome do Cliente</Label>
+                <Label htmlFor="customer-name">Customer Name</Label>
                 <Input
                   id="customer-name"
-                  placeholder="Digite o nome do cliente"
+                  placeholder="Enter customer name"
                   value={formData.customerName}
                   onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="customer-phone">Número de Telefone</Label>
-                <Input
-                  id="customer-phone"
-                  placeholder="Digite o número de telefone"
-                  value={formData.customerPhone}
-                  onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customer-address">Endereço de Entrega</Label>
-                <Input
-                  id="customer-address"
-                  placeholder="Digite o endereço de entrega"
-                  value={formData.customerAddress}
-                  onChange={(e) => setFormData({ ...formData, customerAddress: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dish">Prato</Label>
+                <Label htmlFor="dish">Dish</Label>
                 <Input
                   id="dish"
-                  placeholder="Digite o nome do prato"
+                  placeholder="Enter dish name"
                   value={formData.dish}
                   onChange={(e) => setFormData({ ...formData, dish: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payment">Método de Pagamento</Label>
+                <Label htmlFor="payment">Payment Method</Label>
                 <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({ ...formData, paymentMethod: value as PaymentMethod })}>
                   <SelectTrigger id="payment">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Dinheiro</SelectItem>
-                    <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                    <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                    <SelectItem value="debit_card">Debit Card</SelectItem>
                     <SelectItem value="pix">Pix</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button onClick={handleCreateOrder} className="w-full" disabled={createOrderMutation.isPending}>
-                {createOrderMutation.isPending ? "Criando..." : "Criar Pedido"}
+                {createOrderMutation.isPending ? "Creating..." : "Create Order"}
               </Button>
             </div>
           </DialogContent>
@@ -187,25 +167,25 @@ export default function Orders() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Todos os Pedidos</CardTitle>
+          <CardTitle>All Orders</CardTitle>
         </CardHeader>
         <CardContent>
           {error ? (
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-              <p className="text-muted-foreground">Falha ao carregar pedidos. Por favor, tente novamente.</p>
+              <p className="text-muted-foreground">Failed to load orders. Please try again.</p>
               <Button onClick={() => refetch()} className="mt-4" variant="outline">
-                Tentar Novamente
+                Retry
               </Button>
             </div>
           ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Carregando pedidos...</p>
+              <p className="text-muted-foreground">Loading orders...</p>
             </div>
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Nenhum pedido ainda. Crie seu primeiro pedido para começar.</p>
+              <p className="text-muted-foreground">No orders yet. Create your first order to get started.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -213,12 +193,12 @@ export default function Orders() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Prato</TableHead>
-                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Dish</TableHead>
+                    <TableHead>Payment</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Criado</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -238,10 +218,10 @@ export default function Orders() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending">Pendente</SelectItem>
-                              <SelectItem value="preparing">Preparando</SelectItem>
-                              <SelectItem value="ready">Pronto</SelectItem>
-                              <SelectItem value="delivered">Entregue</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="preparing">Preparing</SelectItem>
+                              <SelectItem value="ready">Ready</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -271,15 +251,15 @@ export default function Orders() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deletar Pedido</AlertDialogTitle>
+            <AlertDialogTitle>Delete Order</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar este pedido? Esta ação não pode ser desfeita.
+              Are you sure you want to delete this order? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-3 justify-end">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Deletar
+              Delete
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

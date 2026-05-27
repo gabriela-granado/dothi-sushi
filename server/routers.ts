@@ -28,8 +28,6 @@ export const appRouter = router({
       .input(
         z.object({
           customerName: z.string().min(1, "Customer name is required"),
-          customerPhone: z.string().min(1, "Phone is required"),
-          customerAddress: z.string().min(1, "Address is required"),
           dish: z.string().min(1, "Dish is required"),
           paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix"]),
         })
@@ -38,8 +36,6 @@ export const appRouter = router({
         try {
           const result = await createOrder({
             customerName: input.customerName,
-            customerPhone: input.customerPhone,
-            customerAddress: input.customerAddress,
             dish: input.dish,
             paymentMethod: input.paymentMethod,
             status: "pending",
