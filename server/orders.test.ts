@@ -50,6 +50,8 @@ describe("orders router", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.orders.create({
       customerName: "Jane Doe",
+      customerPhone: "11999999999",
+      customerAddress: "Rua das Flores, 123",
       dish: "Tuna Roll",
       paymentMethod: "credit_card",
     });
@@ -64,6 +66,8 @@ describe("orders router", () => {
     try {
       await caller.orders.create({
         customerName: "",
+        customerPhone: "11999999999",
+        customerAddress: "Rua das Flores, 123",
         dish: "Tuna Roll",
         paymentMethod: "credit_card",
       });
