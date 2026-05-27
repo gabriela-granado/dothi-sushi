@@ -182,11 +182,15 @@ export async function createOrderWithItems(order: InsertOrder, items: Array<{ me
 
   try {
     const result = await db.insert(orders).values(order);
-    const orderId = (result as any).insertId;
+    const orderId = (result as any)[0]?.insertId || (result as any).insertId;
+
+    if (!orderId) {
+      throw new Error("Failed to get order ID after insertion");
+    }
 
     for (const item of items) {
       await db.insert(orderItems).values({
-        orderId,
+        orderId: orderId as number,
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         price: item.price,
