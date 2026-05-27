@@ -31,16 +31,16 @@ const statusColors: Record<OrderStatus, string> = {
 };
 
 const statusLabels: Record<OrderStatus, string> = {
-  pending: "Pending",
-  preparing: "Preparing",
-  ready: "Ready",
-  delivered: "Delivered",
+  pending: "Pendente",
+  preparing: "Preparando",
+  ready: "Pronto",
+  delivered: "Entregue",
 };
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
-  cash: "Cash",
-  credit_card: "Credit Card",
-  debit_card: "Debit Card",
+  cash: "Dinheiro",
+  credit_card: "Cartão de Crédito",
+  debit_card: "Cartão de Débito",
   pix: "Pix",
 };
 
@@ -62,28 +62,28 @@ export default function Orders() {
 
   const handleCreateOrder = async () => {
     if (!formData.customerName.trim() || !formData.dish.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error("Por favor, preencha todos os campos");
       return;
     }
 
     try {
       await createOrderMutation.mutateAsync(formData);
-      toast.success("Order created successfully");
+      toast.success("Pedido criado com sucesso");
       setFormData({ customerName: "", dish: "", paymentMethod: "cash" });
       setIsDialogOpen(false);
       refetch();
     } catch (error) {
-      toast.error("Failed to create order");
+      toast.error("Falha ao criar pedido");
     }
   };
 
   const handleStatusChange = async (orderId: number, newStatus: OrderStatus) => {
     try {
       await updateStatusMutation.mutateAsync({ orderId, status: newStatus });
-      toast.success("Order status updated");
+      toast.success("Status do pedido atualizado");
       refetch();
     } catch (error) {
-      toast.error("Failed to update order status");
+      toast.error("Falha ao atualizar status do pedido");
     }
   };
 
@@ -92,12 +92,12 @@ export default function Orders() {
 
     try {
       await deleteOrderMutation.mutateAsync({ orderId: selectedOrderId });
-      toast.success("Order deleted successfully");
+      toast.success("Pedido deletado com sucesso");
       setDeleteConfirmOpen(false);
       setSelectedOrderId(null);
       refetch();
     } catch (error) {
-      toast.error("Failed to delete order");
+      toast.error("Falha ao deletar pedido");
     }
   };
 
@@ -110,55 +110,55 @@ export default function Orders() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-          <p className="text-muted-foreground mt-1">Manage and track customer orders</p>
+          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
+          <p className="text-muted-foreground mt-1">Gerenciar e rastrear pedidos de clientes</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              New Order
+              Novo Pedido
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Create New Order</DialogTitle>
+              <DialogTitle>Criar Novo Pedido</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="customer-name">Customer Name</Label>
+                <Label htmlFor="customer-name">Nome do Cliente</Label>
                 <Input
                   id="customer-name"
-                  placeholder="Enter customer name"
+                  placeholder="Digite o nome do cliente"
                   value={formData.customerName}
                   onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dish">Dish</Label>
+                <Label htmlFor="dish">Prato</Label>
                 <Input
                   id="dish"
-                  placeholder="Enter dish name"
+                  placeholder="Digite o nome do prato"
                   value={formData.dish}
                   onChange={(e) => setFormData({ ...formData, dish: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payment">Payment Method</Label>
+                <Label htmlFor="payment">Método de Pagamento</Label>
                 <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({ ...formData, paymentMethod: value as PaymentMethod })}>
                   <SelectTrigger id="payment">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="credit_card">Credit Card</SelectItem>
-                    <SelectItem value="debit_card">Debit Card</SelectItem>
+                    <SelectItem value="cash">Dinheiro</SelectItem>
+                    <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                    <SelectItem value="debit_card">Cartão de Débito</SelectItem>
                     <SelectItem value="pix">Pix</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button onClick={handleCreateOrder} className="w-full" disabled={createOrderMutation.isPending}>
-                {createOrderMutation.isPending ? "Creating..." : "Create Order"}
+                {createOrderMutation.isPending ? "Criando..." : "Criar Pedido"}
               </Button>
             </div>
           </DialogContent>
@@ -167,25 +167,25 @@ export default function Orders() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Orders</CardTitle>
+          <CardTitle>Todos os Pedidos</CardTitle>
         </CardHeader>
         <CardContent>
           {error ? (
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-              <p className="text-muted-foreground">Failed to load orders. Please try again.</p>
+              <p className="text-muted-foreground">Falha ao carregar pedidos. Por favor, tente novamente.</p>
               <Button onClick={() => refetch()} className="mt-4" variant="outline">
-                Retry
+                Tentar Novamente
               </Button>
             </div>
           ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Loading orders...</p>
+              <p className="text-muted-foreground">Carregando pedidos...</p>
             </div>
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No orders yet. Create your first order to get started.</p>
+              <p className="text-muted-foreground">Nenhum pedido ainda. Crie seu primeiro pedido para começar.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -193,12 +193,12 @@ export default function Orders() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Dish</TableHead>
-                    <TableHead>Payment</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Prato</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Criado</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -218,16 +218,16 @@ export default function Orders() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="preparing">Preparing</SelectItem>
-                              <SelectItem value="ready">Ready</SelectItem>
-                              <SelectItem value="delivered">Delivered</SelectItem>
+                              <SelectItem value="pending">Pendente</SelectItem>
+                              <SelectItem value="preparing">Preparando</SelectItem>
+                              <SelectItem value="ready">Pronto</SelectItem>
+                              <SelectItem value="delivered">Entregue</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(order.createdAt).toLocaleDateString("pt-BR")} {new Date(order.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -251,15 +251,15 @@ export default function Orders() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Order</AlertDialogTitle>
+            <AlertDialogTitle>Deletar Pedido</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this order? This action cannot be undone.
+              Tem certeza que deseja deletar este pedido? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-3 justify-end">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              Deletar
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
