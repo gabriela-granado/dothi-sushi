@@ -46,7 +46,7 @@ export const orders = mysqlTable("orders", {
   id: int("id").autoincrement().primaryKey(),
   customerName: varchar("customerName", { length: 255 }).notNull(),
   paymentMethod: mysqlEnum("paymentMethod", ["cash", "credit_card", "debit_card", "pix"]).notNull(),
-  totalPrice: decimal("totalPrice", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   status: mysqlEnum("status", ["pending", "preparing", "ready", "delivered"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
