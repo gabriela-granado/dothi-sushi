@@ -3,7 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { createOrder, deleteOrder, getAllOrders, updateOrderStatus } from "./db";
+import { createOrderWithItems, deleteOrder, getAllOrders, updateOrderStatus, getMenuItems } from "./db";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -20,6 +20,12 @@ export const appRouter = router({
     }),
   }),
 
+  menu: router({
+    list: publicProcedure.query(async () => {
+      return await getMenuItems();
+    }),
+  }),
+
   orders: router({
     list: publicProcedure.query(async () => {
       return await getAllOrders();
@@ -27,25 +33,30 @@ export const appRouter = router({
     create: publicProcedure
       .input(
         z.object({
-          customerName: z.string().min(1, "Customer name is required"),
-          dish: z.string().min(1, "Dish is required"),
+          customerName: z.string().min(1, "Nome do cliente é obrigatório"),
           paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix"]),
+          totalPrice: z.string(),
+          items: z.array(z.object({
+            menuItemId: z.number(),
+            quantity: z.number().min(1),
+            price: z.string(),
+          })).min(1, "Pelo menos um item é obrigatório"),
         })
       )
       .mutation(async ({ input }) => {
         try {
-          const result = await createOrder({
+          const result = await createOrderWithItems({
             customerName: input.customerName,
-            dish: input.dish,
             paymentMethod: input.paymentMethod,
+            totalPrice: input.totalPrice,
             status: "pending",
-          });
-          return { success: true };
+          }, input.items);
+          return { success: true, orderId: result?.orderId };
         } catch (error) {
           console.error("Failed to create order:", error);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create order",
+            message: "Falha ao criar pedido",
           });
         }
       }),
@@ -64,7 +75,7 @@ export const appRouter = router({
           console.error("Failed to update order status:", error);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to update order status",
+            message: "Falha ao atualizar status do pedido",
           });
         }
       }),
@@ -78,7 +89,7 @@ export const appRouter = router({
           console.error("Failed to delete order:", error);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to delete order",
+            message: "Falha ao deletar pedido",
           });
         }
       }),

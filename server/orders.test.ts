@@ -8,14 +8,18 @@ vi.mock("./db", () => ({
     {
       id: 1,
       customerName: "John Doe",
-      dish: "Salmon Sushi",
       paymentMethod: "cash",
+      totalPrice: "50.00",
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
     },
   ]),
-  createOrder: vi.fn(async () => ({ insertId: 1 })),
+  getMenuItems: vi.fn(async () => [
+    { id: 1, name: "Hot Roll", price: "25.00", createdAt: new Date() },
+    { id: 2, name: "Temaki Hot", price: "22.00", createdAt: new Date() },
+  ]),
+  createOrderWithItems: vi.fn(async () => ({ insertId: 1 })),
   updateOrderStatus: vi.fn(async () => ({})),
   deleteOrder: vi.fn(async () => ({})),
 }));
@@ -46,12 +50,23 @@ describe("orders router", () => {
     expect(Array.isArray(orders)).toBe(true);
   });
 
+  it("should list menu items", async () => {
+    const caller = appRouter.createCaller(ctx);
+    const items = await caller.menu.list();
+
+    expect(items).toBeDefined();
+    expect(Array.isArray(items)).toBe(true);
+  });
+
   it("should create a new order with valid input", async () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.orders.create({
       customerName: "Jane Doe",
-      dish: "Tuna Roll",
       paymentMethod: "credit_card",
+      totalPrice: "50.00",
+      items: [
+        { menuItemId: 1, quantity: 2, price: "25.00" },
+      ],
     });
 
     expect(result).toBeDefined();
@@ -64,8 +79,11 @@ describe("orders router", () => {
     try {
       await caller.orders.create({
         customerName: "",
-        dish: "Tuna Roll",
         paymentMethod: "credit_card",
+        totalPrice: "50.00",
+        items: [
+          { menuItemId: 1, quantity: 2, price: "25.00" },
+        ],
       });
       expect.fail("Should have thrown an error");
     } catch (error) {

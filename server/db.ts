@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertOrder, Order, orders, users } from "../drizzle/schema";
+import { InsertUser, InsertOrder, Order, orders, users, menuItems, orderItems } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -156,3 +156,65 @@ export async function deleteOrder(orderId: number) {
 }
 
 // TODO: add feature queries here as your schema grows.
+
+export async function getMenuItems() {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get menu items: database not available");
+    return [];
+  }
+
+  try {
+    const result = await db.select().from(menuItems);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get menu items:", error);
+    throw error;
+  }
+}
+
+export async function createOrderWithItems(order: InsertOrder, items: Array<{ menuItemId: number; quantity: number; price: string }>) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot create order: database not available");
+    return null;
+  }
+
+  try {
+    const result = await db.insert(orders).values(order);
+    const orderId = (result as any).insertId;
+
+    for (const item of items) {
+      await db.insert(orderItems).values({
+        orderId,
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        price: item.price,
+      });
+    }
+
+    return { orderId, ...result };
+  } catch (error) {
+    console.error("[Database] Failed to create order with items:", error);
+    throw error;
+  }
+}
+
+export async function getOrderWithItems(orderId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get order: database not available");
+    return null;
+  }
+
+  try {
+    const order = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (order.length === 0) return null;
+
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    return { ...order[0], items };
+  } catch (error) {
+    console.error("[Database] Failed to get order:", error);
+    throw error;
+  }
+}

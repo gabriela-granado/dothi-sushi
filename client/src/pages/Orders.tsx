@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -44,8 +44,16 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   pix: "Pix",
 };
 
+interface CartItem {
+  menuItemId: number;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
 export default function Orders() {
   const { data: orders = [], isLoading, error, refetch } = trpc.orders.list.useQuery();
+  const { data: menuItems = [] } = trpc.menu.list.useQuery();
   const createOrderMutation = trpc.orders.create.useMutation();
   const updateStatusMutation = trpc.orders.updateStatus.useMutation();
   const deleteOrderMutation = trpc.orders.delete.useMutation();
@@ -54,22 +62,91 @@ export default function Orders() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
 
-  const [formData, setFormData] = useState({
-    customerName: "",
-    dish: "",
-    paymentMethod: "cash" as PaymentMethod,
-  });
+  const [customerName, setCustomerName] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<string>("");
+  const [selectedQuantity, setSelectedQuantity] = useState<string>("1");
+
+  const addToCart = () => {
+    if (!selectedMenuItem) {
+      toast.error("Selecione um prato");
+      return;
+    }
+
+    const menuItem = menuItems.find(m => m.id === parseInt(selectedMenuItem));
+    if (!menuItem) return;
+
+    const quantity = parseInt(selectedQuantity);
+    const existingItem = cartItems.find(item => item.menuItemId === menuItem.id);
+
+    if (existingItem) {
+      setCartItems(cartItems.map(item =>
+        item.menuItemId === menuItem.id
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      ));
+    } else {
+      setCartItems([...cartItems, {
+        menuItemId: menuItem.id,
+        name: menuItem.name,
+        quantity,
+        price: parseFloat(menuItem.price),
+      }]);
+    }
+
+    setSelectedMenuItem("");
+    setSelectedQuantity("1");
+    toast.success("Item adicionado ao carrinho");
+  };
+
+  const removeFromCart = (menuItemId: number) => {
+    setCartItems(cartItems.filter(item => item.menuItemId !== menuItemId));
+  };
+
+  const updateCartItemQuantity = (menuItemId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeFromCart(menuItemId);
+    } else {
+      setCartItems(cartItems.map(item =>
+        item.menuItemId === menuItemId
+          ? { ...item, quantity: newQuantity }
+          : item
+      ));
+    }
+  };
+
+  const calculateTotal = () => {
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2);
+  };
 
   const handleCreateOrder = async () => {
-    if (!formData.customerName.trim() || !formData.dish.trim()) {
-      toast.error("Por favor, preencha todos os campos");
+    if (!customerName.trim()) {
+      toast.error("Por favor, preencha o nome do cliente");
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      toast.error("Adicione pelo menos um item ao pedido");
       return;
     }
 
     try {
-      await createOrderMutation.mutateAsync(formData);
+      const totalPrice = calculateTotal();
+      await createOrderMutation.mutateAsync({
+        customerName,
+        paymentMethod,
+        totalPrice,
+        items: cartItems.map(item => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          price: item.price.toString(),
+        })),
+      });
       toast.success("Pedido criado com sucesso");
-      setFormData({ customerName: "", dish: "", paymentMethod: "cash" });
+      setCustomerName("");
+      setPaymentMethod("cash");
+      setCartItems([]);
       setIsDialogOpen(false);
       refetch();
     } catch (error) {
@@ -120,7 +197,7 @@ export default function Orders() {
               Novo Pedido
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Criar Novo Pedido</DialogTitle>
             </DialogHeader>
@@ -130,22 +207,89 @@ export default function Orders() {
                 <Input
                   id="customer-name"
                   placeholder="Digite o nome do cliente"
-                  value={formData.customerName}
-                  onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="dish">Prato</Label>
-                <Input
-                  id="dish"
-                  placeholder="Digite o nome do prato"
-                  value={formData.dish}
-                  onChange={(e) => setFormData({ ...formData, dish: e.target.value })}
-                />
+
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold">Adicionar Itens</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="menu-select">Selecione um Prato</Label>
+                  <Select value={selectedMenuItem} onValueChange={setSelectedMenuItem}>
+                    <SelectTrigger id="menu-select">
+                      <SelectValue placeholder="Escolha um prato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {menuItems.map((item) => (
+                        <SelectItem key={item.id} value={item.id.toString()}>
+                          {item.name} - R$ {parseFloat(item.price).toFixed(2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantidade</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={selectedQuantity}
+                    onChange={(e) => setSelectedQuantity(e.target.value)}
+                  />
+                </div>
+
+                <Button onClick={addToCart} className="w-full" variant="outline">
+                  Adicionar ao Carrinho
+                </Button>
               </div>
-              <div className="space-y-2">
+
+              {cartItems.length > 0 && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-semibold">Carrinho</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {cartItems.map((item) => (
+                      <div key={item.menuItemId} className="flex items-center justify-between bg-accent/50 p-3 rounded">
+                        <div className="flex-1">
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            R$ {item.price.toFixed(2)} x {item.quantity} = R$ {(item.price * item.quantity).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateCartItemQuantity(item.menuItemId, parseInt(e.target.value))}
+                            className="w-16"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFromCart(item.menuItemId)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between items-center font-semibold">
+                      <span>Total:</span>
+                      <span className="text-lg">R$ {calculateTotal()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 border-t pt-4">
                 <Label htmlFor="payment">Método de Pagamento</Label>
-                <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({ ...formData, paymentMethod: value as PaymentMethod })}>
+                <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
                   <SelectTrigger id="payment">
                     <SelectValue />
                   </SelectTrigger>
@@ -157,7 +301,8 @@ export default function Orders() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleCreateOrder} className="w-full" disabled={createOrderMutation.isPending}>
+
+              <Button onClick={handleCreateOrder} className="w-full" disabled={createOrderMutation.isPending || cartItems.length === 0}>
                 {createOrderMutation.isPending ? "Criando..." : "Criar Pedido"}
               </Button>
             </div>
@@ -194,8 +339,8 @@ export default function Orders() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Prato</TableHead>
                     <TableHead>Pagamento</TableHead>
+                    <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Criado</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -206,8 +351,8 @@ export default function Orders() {
                     <TableRow key={order.id}>
                       <TableCell className="font-medium">#{order.id}</TableCell>
                       <TableCell>{order.customerName}</TableCell>
-                      <TableCell>{order.dish}</TableCell>
                       <TableCell>{paymentMethodLabels[order.paymentMethod]}</TableCell>
+                      <TableCell>R$ {parseFloat(order.totalPrice).toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge className={statusColors[order.status as OrderStatus]}>
