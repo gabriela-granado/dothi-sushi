@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, InsertOrder, Order, orders, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,72 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllOrders() {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get orders: database not available");
+    return [];
+  }
+
+  try {
+    const result = await db.select().from(orders).orderBy(desc(orders.createdAt));
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get orders:", error);
+    throw error;
+  }
+}
+
+export async function createOrder(order: InsertOrder) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot create order: database not available");
+    return null;
+  }
+
+  try {
+    const result = await db.insert(orders).values(order);
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to create order:", error);
+    throw error;
+  }
+}
+
+export async function updateOrderStatus(orderId: number, status: Order['status']) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update order: database not available");
+    return null;
+  }
+
+  try {
+    const result = await db.update(orders)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(orders.id, orderId));
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to update order status:", error);
+    throw error;
+  }
+}
+
+export async function deleteOrder(orderId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot delete order: database not available");
+    return null;
+  }
+
+  try {
+    const result = await db.delete(orders).where(eq(orders.id, orderId));
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to delete order:", error);
+    throw error;
+  }
 }
 
 // TODO: add feature queries here as your schema grows.

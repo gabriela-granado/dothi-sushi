@@ -25,4 +25,19 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Orders table for storing customer sushi orders.
+ * Tracks order details, payment method, and current status.
+ */
+export const orders = mysqlTable("orders", {
+  id: int("id").autoincrement().primaryKey(),
+  customerName: varchar("customerName", { length: 255 }).notNull(),
+  dish: varchar("dish", { length: 255 }).notNull(),
+  paymentMethod: mysqlEnum("paymentMethod", ["cash", "credit_card", "debit_card", "pix"]).notNull(),
+  status: mysqlEnum("status", ["pending", "preparing", "ready", "delivered"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;
