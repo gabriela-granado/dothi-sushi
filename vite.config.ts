@@ -150,7 +150,8 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+// Disabled vitePluginManusDebugCollector() due to DOM mutation conflicts with React
 
 export default defineConfig({
   base: "/",
