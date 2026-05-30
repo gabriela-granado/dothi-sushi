@@ -3,7 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { createOrderWithItems, deleteOrder, getAllOrders, updateOrderStatus, getMenuItems } from "./db";
+import { createOrderWithItems, deleteOrder, getAllOrders, updateOrderStatus, getMenuItems, getKitchenOrders } from "./db";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -23,6 +23,12 @@ export const appRouter = router({
   menu: router({
     list: publicProcedure.query(async () => {
       return await getMenuItems();
+    }),
+  }),
+
+  kitchen: router({
+    getPendingOrders: publicProcedure.query(async () => {
+      return await getKitchenOrders();
     }),
   }),
 
@@ -90,6 +96,20 @@ export const appRouter = router({
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "Falha ao deletar pedido",
+          });
+        }
+      }),
+    markReady: publicProcedure
+      .input(z.object({ orderId: z.number() }))
+      .mutation(async ({ input }) => {
+        try {
+          await updateOrderStatus(input.orderId, "ready");
+          return { success: true };
+        } catch (error) {
+          console.error("Failed to mark order as ready:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Falha ao marcar pedido como pronto",
           });
         }
       }),

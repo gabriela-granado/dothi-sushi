@@ -155,6 +155,26 @@ export async function deleteOrder(orderId: number) {
   }
 }
 
+// Kitchen panel - get pending and preparing orders
+export async function getKitchenOrders() {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get kitchen orders: database not available");
+    return [];
+  }
+
+  try {
+    const { inArray, asc } = await import('drizzle-orm');
+    const result = await db.select().from(orders)
+      .where(inArray(orders.status, ['pending', 'preparing']))
+      .orderBy(asc(orders.createdAt));
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get kitchen orders:", error);
+    throw error;
+  }
+}
+
 // TODO: add feature queries here as your schema grows.
 
 export async function getMenuItems() {

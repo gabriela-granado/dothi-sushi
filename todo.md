@@ -32,3 +32,15 @@
 - [x] Test order creation, listing, status updates, and deletion flows
 - [x] Verify database integration and data persistence
 - [x] Create final checkpoint before delivery
+
+
+## Painel do Sushiman (Kitchen Operator Panel)
+- [x] Criar procedimento tRPC para buscar pedidos pendentes/preparando
+- [x] Implementar procedimento para atualizar status do pedido para "Pronto"
+- [x] Criar página do painel da cozinha com polling automático a cada 10 segundos
+- [x] Exibir pedidos em ordem FIFO (cronológica)
+- [x] Adicionar botão "Marcar como Pronto" para cada pedido
+- [x] Adicionar indicadores visuais para novos pedidos
+- [x] Adicionar animação ao receber novo pedido
+- [x] Testar funcionalidade de atualização automática
+- [x] Testar atualização de status do pedido
