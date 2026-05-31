@@ -155,7 +155,7 @@ export async function deleteOrder(orderId: number) {
   }
 }
 
-// Kitchen panel - get pending and preparing orders
+// Kitchen panel - get pending and preparing orders with items
 export async function getKitchenOrders() {
   const db = await getDb();
   if (!db) {
@@ -164,11 +164,34 @@ export async function getKitchenOrders() {
   }
 
   try {
-    const { inArray, asc } = await import('drizzle-orm');
-    const result = await db.select().from(orders)
+    const { inArray, asc, eq } = await import('drizzle-orm');
+    
+    // Get pending and preparing orders
+    const pendingOrders = await db.select().from(orders)
       .where(inArray(orders.status, ['pending', 'preparing']))
       .orderBy(asc(orders.createdAt));
-    return result;
+    
+    // For each order, get its items with menu item names
+    const ordersWithItems = await Promise.all(
+      pendingOrders.map(async (order) => {
+        const items = await db.select({
+          id: orderItems.id,
+          menuItemId: orderItems.menuItemId,
+          menuItemName: menuItems.name,
+          quantity: orderItems.quantity,
+        })
+        .from(orderItems)
+        .leftJoin(menuItems, eq(orderItems.menuItemId, menuItems.id))
+        .where(eq(orderItems.orderId, order.id));
+        
+        return {
+          ...order,
+          items: items || [],
+        };
+      })
+    );
+    
+    return ordersWithItems;
   } catch (error) {
     console.error("[Database] Failed to get kitchen orders:", error);
     throw error;

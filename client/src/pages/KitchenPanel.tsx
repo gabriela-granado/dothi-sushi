@@ -8,13 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2, Clock, Flame } from "lucide-react";
 import { toast } from "sonner";
 
-interface Order {
+interface OrderItem {
+  id: number;
+  menuItemId: number;
+  menuItemName: string;
+  quantity: number;
+}
+
+interface KitchenOrder {
   id: number;
   customerName: string;
-  paymentMethod: string;
   status: string;
-  totalPrice: string;
   createdAt: Date;
+  items: OrderItem[];
 }
 
 export default function KitchenPanel() {
@@ -121,8 +127,8 @@ export default function KitchenPanel() {
     updateStatusMutation.mutate({ orderId, status: newStatus });
   };
 
-  const pendingCount = kitchenOrders?.filter(o => o.status === "pending").length || 0;
-  const preparingCount = kitchenOrders?.filter(o => o.status === "preparing").length || 0;
+  const pendingCount = kitchenOrders?.filter((o: any) => o.status === "pending").length || 0;
+  const preparingCount = kitchenOrders?.filter((o: any) => o.status === "preparing").length || 0;
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -194,6 +200,7 @@ export default function KitchenPanel() {
                     <div>
                       <div className="text-sm text-gray-400">Pedido #{order.id}</div>
                       <div className="text-xl font-bold text-white">{order.customerName}</div>
+                      <div className="text-xs text-gray-500 mt-1">{formatTime(order.createdAt)}</div>
                     </div>
                     <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
                       {getStatusIcon(order.status)}
@@ -201,29 +208,22 @@ export default function KitchenPanel() {
                     </Badge>
                   </div>
 
-                  {/* Order Details */}
-                  <div className="space-y-2 mb-4 pb-4 border-b border-gray-700">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Horário:</span>
-                      <span className="text-white">{formatTime(order.createdAt)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Valor:</span>
-                      <span className="text-white font-semibold">
-                        R$ {parseFloat(order.totalPrice).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Pagamento:</span>
-                      <span className="text-white capitalize">
-                        {order.paymentMethod === "cash"
-                          ? "Dinheiro"
-                          : order.paymentMethod === "credit_card"
-                            ? "Cartão de Crédito"
-                            : order.paymentMethod === "debit_card"
-                              ? "Cartão de Débito"
-                              : "Pix"}
-                      </span>
+                  {/* Order Items */}
+                  <div className="mb-4 pb-4 border-b border-gray-700">
+                    <div className="text-sm font-semibold text-gray-300 mb-3">Itens do Pedido:</div>
+                    <div className="space-y-2">
+                      {order.items && order.items.length > 0 ? (
+                        order.items.map((item: OrderItem) => (
+                          <div key={item.id} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                            <span className="text-white font-medium">{item.menuItemName}</span>
+                            <span className="bg-red-600 text-white px-3 py-1 rounded font-bold text-sm">
+                              x{item.quantity}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-400 text-sm">Nenhum item</p>
+                      )}
                     </div>
                   </div>
 
