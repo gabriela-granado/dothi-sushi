@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -13,15 +15,13 @@ interface Order {
   status: string;
   totalPrice: string;
   createdAt: Date;
-  updatedAt?: Date;
 }
 
 export default function KitchenPanel() {
-  const [orders, setOrders] = useState<Order[]>([]);
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(true);
 
-  const { data: kitchenOrders, refetch } = trpc.kitchen.getPendingOrders.useQuery(
+  const { data: kitchenOrders = [], refetch, isLoading } = trpc.kitchen.getPendingOrders.useQuery(
     undefined,
     {
       refetchInterval: isAutoRefreshing ? 10000 : false,
@@ -29,24 +29,19 @@ export default function KitchenPanel() {
     }
   );
 
-  const markReadyMutation = trpc.orders.markReady.useMutation({
+  const updateStatusMutation = trpc.orders.updateStatus.useMutation({
     onSuccess: () => {
-      toast.success("Pedido marcado como pronto!");
-      refetch();
+      toast.success("Status atualizado!");
+      setTimeout(() => refetch(), 500);
     },
-    onError: () => {
-      toast.error("Erro ao marcar pedido como pronto");
+    onError: (error) => {
+      toast.error("Erro ao atualizar status");
+      console.error(error);
     },
   });
 
   useEffect(() => {
     if (kitchenOrders && kitchenOrders.length > 0) {
-      const mappedOrders = kitchenOrders.map((o: any) => ({
-        ...o,
-        total_price: o.totalPrice,
-      })) as Order[];
-      setOrders(mappedOrders);
-
       // Play sound and show notification for new orders
       if (kitchenOrders.length > lastOrderCount) {
         playNotificationSound();
@@ -54,25 +49,28 @@ export default function KitchenPanel() {
       }
       setLastOrderCount(kitchenOrders.length);
     }
-  }, [kitchenOrders, lastOrderCount]);
+  }, [kitchenOrders?.length]);
 
   const playNotificationSound = () => {
-    // Create a simple beep sound using Web Audio API
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
 
-    oscillator.frequency.value = 800;
-    oscillator.type = "sine";
+      oscillator.frequency.value = 800;
+      oscillator.type = "sine";
 
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
 
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.error("Error playing sound:", error);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -114,26 +112,17 @@ export default function KitchenPanel() {
     }
   };
 
-  const formatTime = (date: Date) => {
-    const d = new Date(date);
+  const formatTime = (date: Date | string) => {
+    const d = typeof date === "string" ? new Date(date) : new Date(date);
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   };
 
-  const handleMarkReady = (orderId: number, nextStatus: "preparing" | "ready") => {
-    if (nextStatus === "preparing") {
-      trpc.orders.updateStatus.useMutation({
-        onSuccess: () => {
-          toast.success("Iniciando preparo...");
-          refetch();
-        },
-        onError: () => {
-          toast.error("Erro ao iniciar preparo");
-        },
-      }).mutate({ orderId, status: "preparing" });
-    } else {
-      markReadyMutation.mutate({ orderId });
-    }
+  const handleStatusChange = (orderId: number, newStatus: "preparing" | "ready") => {
+    updateStatusMutation.mutate({ orderId, status: newStatus });
   };
+
+  const pendingCount = kitchenOrders?.filter(o => o.status === "pending").length || 0;
+  const preparingCount = kitchenOrders?.filter(o => o.status === "preparing").length || 0;
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -148,8 +137,8 @@ export default function KitchenPanel() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${isAutoRefreshing ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
-                <span className="text-gray-300 text-sm">
-                  {isAutoRefreshing ? "Auto-atualização ativa" : "Auto-atualização desativada"}
+                <span className="text-sm text-gray-300">
+                  {isAutoRefreshing ? "Atualizando" : "Pausado"}
                 </span>
               </div>
               <Button
@@ -162,114 +151,116 @@ export default function KitchenPanel() {
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Statistics */}
           <div className="grid grid-cols-3 gap-4">
             <Card className="bg-gray-800 border-gray-700 p-4">
-              <div className="text-gray-400 text-sm mb-1">Total de Pedidos</div>
-              <div className="text-3xl font-bold text-white">{orders.length}</div>
+              <div className="text-sm text-gray-400 mb-1">Total de Pedidos</div>
+              <div className="text-3xl font-bold text-white">{kitchenOrders?.length || 0}</div>
             </Card>
-            <Card className="bg-gray-800 border-gray-700 p-4">
-              <div className="text-gray-400 text-sm mb-1">Recebidos</div>
-              <div className="text-3xl font-bold text-yellow-500">
-                {orders.filter((o) => o.status === "pending").length}
-              </div>
+            <Card className="bg-yellow-900 border-yellow-700 p-4">
+              <div className="text-sm text-yellow-200 mb-1">Recebidos</div>
+              <div className="text-3xl font-bold text-yellow-100">{pendingCount}</div>
             </Card>
-            <Card className="bg-gray-800 border-gray-700 p-4">
-              <div className="text-gray-400 text-sm mb-1">Preparando</div>
-              <div className="text-3xl font-bold text-orange-500">
-                {orders.filter((o) => o.status === "preparing").length}
-              </div>
+            <Card className="bg-orange-900 border-orange-700 p-4">
+              <div className="text-sm text-orange-200 mb-1">Preparando</div>
+              <div className="text-3xl font-bold text-orange-100">{preparingCount}</div>
             </Card>
           </div>
         </div>
 
         {/* Orders Grid */}
-        {orders.length === 0 ? (
-          <div className="text-center py-16">
-            <Clock className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-300 mb-2">Nenhum pedido pendente</h2>
-            <p className="text-gray-500">Aguardando novos pedidos...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {orders.map((order) => (
-              <Card
-                key={order.id}
-                className={`border-2 p-6 transition-all ${
-                  order.status === "pending"
-                    ? "bg-yellow-950 border-yellow-600 shadow-lg shadow-yellow-600/20"
-                    : order.status === "preparing"
-                      ? "bg-orange-950 border-orange-600 shadow-lg shadow-orange-600/20"
-                      : "bg-gray-800 border-gray-700"
-                }`}
-              >
-                {/* Order Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-400 mb-1">Pedido #{order.id}</div>
-                    <h3 className="text-xl font-bold text-white">{order.customerName}</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(order.status)}
-                    <Badge className={getStatusColor(order.status)}>
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-4">Todos os Pedidos</h2>
+
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400">Carregando pedidos...</p>
+            </div>
+          ) : kitchenOrders && kitchenOrders.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {kitchenOrders.map((order: any) => (
+                <Card
+                  key={order.id}
+                  className={`border-2 p-6 ${
+                    order.status === "pending"
+                      ? "border-yellow-500 bg-gray-800"
+                      : order.status === "preparing"
+                        ? "border-orange-500 bg-gray-800"
+                        : "border-green-500 bg-gray-800"
+                  }`}
+                >
+                  {/* Order Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="text-sm text-gray-400">Pedido #{order.id}</div>
+                      <div className="text-xl font-bold text-white">{order.customerName}</div>
+                    </div>
+                    <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
+                      {getStatusIcon(order.status)}
                       {getStatusLabel(order.status)}
                     </Badge>
                   </div>
-                </div>
 
-                {/* Order Time */}
-                <div className="mb-4 pb-4 border-b border-gray-700">
-                  <div className="text-sm text-gray-400">Recebido às</div>
-                  <div className="text-lg font-semibold text-white">{formatTime(order.createdAt)}</div>
-                </div>
-
-                {/* Order Details */}
-                <div className="mb-6 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Valor Total:</span>
-                    <span className="font-bold text-white">R$ {parseFloat(order.totalPrice).toFixed(2)}</span>
+                  {/* Order Details */}
+                  <div className="space-y-2 mb-4 pb-4 border-b border-gray-700">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Horário:</span>
+                      <span className="text-white">{formatTime(order.createdAt)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Valor:</span>
+                      <span className="text-white font-semibold">
+                        R$ {parseFloat(order.totalPrice).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Pagamento:</span>
+                      <span className="text-white capitalize">
+                        {order.paymentMethod === "cash"
+                          ? "Dinheiro"
+                          : order.paymentMethod === "credit_card"
+                            ? "Cartão de Crédito"
+                            : order.paymentMethod === "debit_card"
+                              ? "Cartão de Débito"
+                              : "Pix"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Pagamento:</span>
-                    <span className="text-white capitalize">
-                      {order.paymentMethod === "cash"
-                        ? "Dinheiro"
-                        : order.paymentMethod === "credit_card"
-                          ? "Cartão de Crédito"
-                          : order.paymentMethod === "debit_card"
-                            ? "Cartão de Débito"
-                            : "Pix"}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  {order.status === "pending" && (
-                    <Button
-                      onClick={() => handleMarkReady(order.id, "preparing")}
-                      className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
-                      disabled={markReadyMutation.isPending}
-                    >
-                      <Flame className="w-4 h-4 mr-2" />
-                      Iniciar Preparo
-                    </Button>
-                  )}
-                  {order.status === "preparing" && (
-                    <Button
-                      onClick={() => handleMarkReady(order.id, "ready")}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      disabled={markReadyMutation.isPending}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Marcar Pronto
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    {order.status === "pending" && (
+                      <Button
+                        onClick={() => handleStatusChange(order.id, "preparing")}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                        disabled={updateStatusMutation.isPending}
+                      >
+                        <Flame className="w-4 h-4 mr-2" />
+                        Iniciar Preparo
+                      </Button>
+                    )}
+                    {order.status === "preparing" && (
+                      <Button
+                        onClick={() => handleStatusChange(order.id, "ready")}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        disabled={updateStatusMutation.isPending}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Marcar Pronto
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="bg-gray-800 border-gray-700 p-12 text-center">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <p className="text-xl text-gray-300">Nenhum pedido pendente!</p>
+              <p className="text-sm text-gray-400 mt-2">Todos os pedidos foram completados</p>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
